@@ -1,0 +1,54 @@
+{
+    "name": "iqonic/laravel-advanced-file-manager",
+    "description": "A production-ready Laravel file management package with role-based access, image/video compression, and storage quotas.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Iqonic Design",
+            "email": "hello@iqonic.design"
+        }
+    ],
+    "keywords": [
+        "laravel",
+        "file-manager",
+        "media",
+        "upload",
+        "s3",
+        "compression"
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^11.0",
+        "illuminate/contracts": "^10.0|^11.0",
+        "intervention/image": "^2.7",
+        "php-ffmpeg/php-ffmpeg": "^1.1"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0",
+        "pestphp/pest": "^2.0",
+        "pestphp/pest-plugin-laravel": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Iqonic\\FileManager\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Iqonic\\FileManager\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Iqonic\\FileManager\\FileManagerServiceProvider"
+            ],
+            "aliases": {
+                "FileManager": "Iqonic\\FileManager\\Facades\\FileManager"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
