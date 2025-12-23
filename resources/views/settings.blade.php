@@ -186,11 +186,10 @@
     }">
         
         <!-- S3 Storage Settings -->
-        <div class="glass-panel rounded-2xl p-6 mb-6">
+        <!-- <div class="glass-panel rounded-2xl p-6 mb-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Amazon S3 Storage</h3>
             <div class="space-y-6">
                 
-                <!-- Enable S3 Toggle -->
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700">Enable S3 Storage</label>
@@ -205,10 +204,8 @@
                     </button>
                 </div>
 
-                <!-- S3 Configuration (shown when enabled) -->
                 <div x-show="s3_enabled" class="pl-4 border-l-2 border-gray-200 space-y-4">
                     
-                    <!-- Access Key -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Access Key ID</label>
                         <input type="text" 
@@ -217,7 +214,6 @@
                                class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all">
                     </div>
 
-                    <!-- Secret Key -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Secret Access Key</label>
                         <input type="password" 
@@ -226,7 +222,6 @@
                                class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all">
                     </div>
 
-                    <!-- Region -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Region</label>
                         <select x-model="s3_region"
@@ -244,7 +239,6 @@
                         </select>
                     </div>
 
-                    <!-- Bucket Name -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Bucket Name</label>
                         <input type="text" 
@@ -253,7 +247,6 @@
                                class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all">
                     </div>
 
-                    <!-- Custom Endpoint (Optional) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Custom Endpoint (Optional)</label>
                         <input type="text" 
@@ -263,7 +256,6 @@
                         <p class="text-xs text-gray-500 mt-1">For S3-compatible services like DigitalOcean Spaces, Wasabi, etc.</p>
                     </div>
 
-                    <!-- Test Connection Button -->
                     <div>
                         <button @click="testS3Connection()" 
                                 :disabled="testing"
@@ -271,7 +263,6 @@
                             <span x-text="testing ? 'Testing...' : 'Test Connection'"></span>
                         </button>
                         
-                        <!-- Test Result -->
                         <div x-show="testResult" class="mt-2">
                             <div x-show="testResult && testResult.success" class="text-green-600 text-sm flex items-center">
                                 <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -289,7 +280,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Theme Customization -->
         <div class="glass-panel rounded-2xl p-6 mb-6">
