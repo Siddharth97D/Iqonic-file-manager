@@ -16,10 +16,45 @@ class File extends Model
     protected $casts = [
         'size' => 'integer',
         'owner_id' => 'integer',
-
         'tenant_id' => 'integer',
         'parent_id' => 'integer',
+        's3_sync_status' => 'string',
+        's3_path' => 'string',
+        's3_url' => 'string',
     ];
+
+    protected $appends = ['human_date', 'preview_url', 'thumbnail_url'];
+
+    public function getHumanDateAttribute()
+    {
+        return $this->created_at->diffForHumans(null, true);
+    }
+
+    public function getPreviewUrlAttribute()
+    {
+        // Handle thumbnail request via attribute? 
+        // Better: add a dedicated thumbnail_url attribute for ease of use in JS
+        if ($this->s3_sync_status === 'synced' && $this->s3_path) {
+            return app(\Iqonic\FileManager\Services\S3SyncService::class)->getPresignedUrl($this);
+        }
+
+        return route('file-manager.preview', $this->id);
+    }
+
+    public function getThumbnailUrlAttribute()
+    {
+        if ($this->s3_sync_status === 'synced' && $this->s3_thumbnail_path) {
+            return app(\Iqonic\FileManager\Services\S3SyncService::class)->getPresignedUrl($this, '+1 hour', true);
+        }
+
+        if ($this->thumbnail_path) {
+             return route('file-manager.preview', ['file' => $this->id, 'thumbnail' => 'true']);
+        }
+
+        return null;
+    }
+
+
 
     public function parent()
     {
@@ -69,12 +104,5 @@ class File extends Model
     public function share(): HasOne
     {
         return $this->hasOne(FileShare::class);
-    }
-
-    protected $appends = ['human_date'];
-
-    public function getHumanDateAttribute()
-    {
-        return $this->created_at->diffForHumans(null, true);
     }
 }

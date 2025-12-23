@@ -12,7 +12,9 @@
         s3_secret: '{{ $settings['s3_secret'] }}',
         s3_region: '{{ $settings['s3_region'] }}',
         s3_bucket: '{{ $settings['s3_bucket'] }}',
+        s3_root_folder: '{{ $settings['s3_root_folder'] }}',
         s3_endpoint: '{{ $settings['s3_endpoint'] }}',
+        sync_loading: false,
         // Theme settings
         theme_primary_color: '{{ $settings['theme_primary_color'] }}',
         theme_sidebar_bg: '{{ $settings['theme_sidebar_bg'] }}',
@@ -127,6 +129,7 @@
                         s3_secret: this.s3_secret,
                         s3_region: this.s3_region,
                         s3_bucket: this.s3_bucket,
+                        s3_root_folder: this.s3_root_folder,
                         s3_endpoint: this.s3_endpoint,
                         // Theme settings
                         theme_primary_color: this.theme_primary_color,
@@ -145,9 +148,11 @@
                 
                 const data = await response.json();
                 if (response.ok) {
-                    alert('Settings saved successfully!');
+                    // alert('Settings saved successfully!');
+                    return true;
                 } else {
                     alert(data.message || 'Failed to save settings');
+                    return false;
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -158,6 +163,7 @@
         },
         
         async testS3Connection() {
+            if (!(await this.saveSettings())) return;
             this.testing = true;
             this.testResult = null;
             try {
@@ -182,14 +188,36 @@
             } finally {
                 this.testing = false;
             }
+        },
+
+        async syncToS3() {
+            if (!(await this.saveSettings())) return;
+            if (!confirm('Are you sure you want to sync all existing files to S3? This may take some time.')) return;
+            this.sync_loading = true;
+            try {
+                const response = await fetch(`${window.apiBaseUrl}/settings/sync-s3`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                });
+                const data = await response.json();
+                alert(data.message);
+            } catch (error) {
+                alert('Failed to start sync');
+            } finally {
+                this.sync_loading = false;
+            }
         }
     }">
         
         <!-- S3 Storage Settings -->
-        <!-- <div class="glass-panel rounded-2xl p-6 mb-6">
+        <div class="glass-panel rounded-2xl p-6 mb-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Amazon S3 Storage</h3>
             <div class="space-y-6">
                 
+                <!-- Enable S3 Toggle -->
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700">Enable S3 Storage</label>
@@ -204,8 +232,10 @@
                     </button>
                 </div>
 
+                <!-- S3 Configuration (shown when enabled) -->
                 <div x-show="s3_enabled" class="pl-4 border-l-2 border-gray-200 space-y-4">
                     
+                    <!-- Access Key -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Access Key ID</label>
                         <input type="text" 
@@ -214,6 +244,7 @@
                                class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all">
                     </div>
 
+                    <!-- Secret Key -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Secret Access Key</label>
                         <input type="password" 
@@ -222,6 +253,7 @@
                                class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all">
                     </div>
 
+                    <!-- Region -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Region</label>
                         <select x-model="s3_region"
@@ -239,6 +271,7 @@
                         </select>
                     </div>
 
+                    <!-- Bucket Name -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Bucket Name</label>
                         <input type="text" 
@@ -247,6 +280,17 @@
                                class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all">
                     </div>
 
+                    <!-- Root Folder Name -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Root Folder Name</label>
+                        <input type="text" 
+                               x-model="s3_root_folder"
+                               placeholder="my-app-files"
+                               class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all">
+                        <p class="text-xs text-gray-500 mt-1">Files will be stored under this folder in your bucket.</p>
+                    </div>
+
+                    <!-- Custom Endpoint (Optional) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Custom Endpoint (Optional)</label>
                         <input type="text" 
@@ -256,6 +300,7 @@
                         <p class="text-xs text-gray-500 mt-1">For S3-compatible services like DigitalOcean Spaces, Wasabi, etc.</p>
                     </div>
 
+                    <!-- Test Connection Button -->
                     <div>
                         <button @click="testS3Connection()" 
                                 :disabled="testing"
@@ -263,6 +308,7 @@
                             <span x-text="testing ? 'Testing...' : 'Test Connection'"></span>
                         </button>
                         
+                        <!-- Test Result -->
                         <div x-show="testResult" class="mt-2">
                             <div x-show="testResult && testResult.success" class="text-green-600 text-sm flex items-center">
                                 <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -278,10 +324,33 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Bulk Sync Action -->
+                    <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Sync Existing Data</h4>
+                            <p class="text-xs text-gray-500">Push all current local files to S3</p>
+                        </div>
+                        <button @click="syncToS3()" 
+                                :disabled="sync_loading || !s3_enabled"
+                                class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+                            <span x-text="sync_loading ? 'Syncing...' : 'Start Sync'"></span>
+                    </div>
+                </div>
+
+                <!-- Save S3 Settings Button -->
+                <div class="pt-6 border-t border-gray-100 mt-6">
+                    <button @click="if(await saveSettings()) alert('S3 Settings saved successfully!')" 
+                            :disabled="saving"
+                            class="w-full theme-bg-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 transition-all flex items-center justify-center">
+                        <svg x-show="saving" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span x-text="saving ? 'Saving...' : 'Save S3 Settings'"></span>
+                    </button>
+                    <p class="text-[10px] text-center text-gray-400 mt-2">Any changes to credentials or root folder must be saved before testing or syncing.</p>
                 </div>
             </div>
-        </div> -->
-
+        </div>
+        
         <!-- Theme Customization -->
         <div class="glass-panel rounded-2xl p-6 mb-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Theme Customization</h3>

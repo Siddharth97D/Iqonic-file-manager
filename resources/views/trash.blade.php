@@ -11,99 +11,9 @@
 @endsection
 
 @section('content')
-    <div class="glass-panel rounded-2xl overflow-hidden" x-data="{
-        selectedFiles: [],
-        allFiles: @json($files->items()),
+<div x-data="trashPage(@js($files->items()))">
+    <div class="glass-panel rounded-2xl overflow-hidden">
 
-        selectFile(file) {
-            if (!file) return;
-            const index = this.selectedFiles.findIndex(f => f.id === file.id);
-            if (index === -1) {
-                this.selectedFiles.push(file);
-            } else {
-                this.selectedFiles.splice(index, 1);
-            }
-        },
-
-        clickTimeout: null,
-        handleFileClick(file) {
-            if (this.clickTimeout) {
-                clearTimeout(this.clickTimeout);
-                this.clickTimeout = null;
-                return;
-            }
-            this.clickTimeout = setTimeout(() => {
-                this.selectFile(file);
-                this.clickTimeout = null;
-            }, 250);
-        },
-
-        async restoreFile(id) {
-            if (!confirm('Restore this file?')) return;
-            this.executeRestore([id]);
-        },
-
-        async bulkRestore() {
-            if (!confirm(`Restore ${this.selectedFiles.length} items?`)) return;
-            this.executeRestore(this.selectedFiles.map(f => f.id));
-        },
-
-        async executeRestore(ids) {
-            try {
-                const response = await fetch(`${window.apiBaseUrl}/api/trash/bulk-restore`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({ ids })
-                });
-                
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    const data = await response.json();
-                    alert(data.message || 'Restore failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred');
-            }
-        },
-
-        async deleteFile(id) {
-            if (!confirm('Permanently delete this file? This cannot be undone.')) return;
-            this.executeDelete([id]);
-        },
-
-        async bulkDelete() {
-            if (!confirm(`Permanently delete ${this.selectedFiles.length} items? This cannot be undone.`)) return;
-            this.executeDelete(this.selectedFiles.map(f => f.id));
-        },
-
-        async executeDelete(ids) {
-            try {
-                const response = await fetch(`${window.apiBaseUrl}/api/trash/bulk-destroy`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({ ids })
-                });
-                
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    const data = await response.json();
-                    alert(data.message || 'Delete failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred');
-            }
-        }
-    }">
         <table class="min-w-full divide-y divide-gray-200/50">
             <thead class="bg-gray-50/50 backdrop-blur-sm">
                 <tr>
@@ -139,13 +49,29 @@
                                 @if($file->type === 'folder')
                                     <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
                                 @elseif(str_starts_with($file->mime_type, 'image/'))
-                                    <img src="{{ route('file-manager.preview', $file->id) }}" class="object-cover w-full h-full rounded">
+                                    <img src="{{ $file->thumbnail_url ?: $file->preview_url }}" class="object-cover w-full h-full rounded">
+                                @elseif(str_starts_with($file->mime_type, 'video/') && $file->thumbnail_path)
+                                    <div class="relative w-full h-full">
+                                        <img src="{{ $file->thumbnail_url }}" class="object-cover w-full h-full">
+                                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-10">
+                                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"></path></svg>
+                                        </div>
+                                    </div>
                                 @else
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                 @endif
                             </div>
                             <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900">{{ $file->basename }}</div>
+                                <div class="text-sm font-medium text-gray-900 flex items-center">
+                                    {{ $file->basename }}
+                                    @if($file->type === 'file')
+                                        @if($file->s3_sync_status === 'synced')
+                                            <svg class="w-3 h-3 ml-2 text-green-500" fill="currentColor" viewBox="0 0 20 20" title="Synced to S3"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                        @elseif($file->s3_sync_status === 'failed')
+                                            <svg class="w-3 h-3 ml-2 text-red-500" fill="currentColor" viewBox="0 0 20 20" title="Sync Failed"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                        @endif
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </td>
@@ -170,36 +96,137 @@
         <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-200/50">
             {{ $files->links() }}
         </div>
+    </div>
 
-        <!-- Bulk Actions Toolbar (Trash) -->
-        <div x-show="selectedFiles.length > 0" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-y-10"
-             x-transition:enter-end="opacity-100 translate-y-0"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0"
-             x-transition:leave-end="opacity-0 translate-y-10"
-             class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] bg-white/80 backdrop-blur-2xl px-6 py-4 rounded-2xl shadow-2xl border border-white/50 flex items-center space-x-6">
-            
-            <div class="flex items-center space-x-2 border-r border-gray-200 pr-6 mr-2">
-                <span class="flex items-center justify-center min-w-8 h-8 px-2 rounded-full theme-bg-primary text-white text-xs font-bold" x-text="selectedFiles.length"></span>
-                <span class="text-sm font-semibold text-gray-700">Items selected</span>
-            </div>
+    <!-- Bulk Actions Toolbar (Trash) -->
+    <div x-show="selectedFiles.length > 0" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-10"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-10"
+         class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] bg-white/80 backdrop-blur-2xl px-6 py-4 rounded-2xl shadow-2xl border border-white/50 flex items-center space-x-6">
+        
+        <div class="flex items-center space-x-2 border-r border-gray-200 pr-6 mr-2">
+            <span class="flex items-center justify-center min-w-8 h-8 px-2 rounded-full theme-bg-primary text-white text-xs font-bold" x-text="selectedFiles.length"></span>
+            <span class="text-sm font-semibold text-gray-700">Items selected</span>
+        </div>
 
-            <div class="flex items-center space-x-3">
-                <button @click="bulkRestore()" 
-                        class="flex items-center px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors font-medium text-sm">
-                    Restore
-                </button>
-                <button @click="bulkDelete()" 
-                        class="flex items-center px-4 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors font-medium text-sm">
-                    Delete Permanently
-                </button>
-                <button @click="selectedFiles = []" 
-                        class="flex items-center px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors font-medium text-sm">
-                    Cancel
-                </button>
-            </div>
+        <div class="flex items-center space-x-3">
+            <button @click="bulkRestore()" 
+                    class="flex items-center px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors font-medium text-sm">
+                Restore
+            </button>
+            <button @click="bulkDelete()" 
+                    class="flex items-center px-4 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors font-medium text-sm">
+                Delete Permanently
+            </button>
+            <button @click="selectedFiles = []" 
+                    class="flex items-center px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors font-medium text-sm">
+                Cancel
+            </button>
         </div>
     </div>
+</div>
+@endsection
+@section('scripts')
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('trashPage', (initialFiles) => ({
+        selectedFiles: [],
+        allFiles: initialFiles,
+
+        selectFile(file) {
+            if (!file) return;
+            const index = this.selectedFiles.findIndex(f => f.id === file.id);
+            if (index === -1) {
+                this.selectedFiles.push(file);
+            } else {
+                this.selectedFiles.splice(index, 1);
+            }
+        },
+
+        clickTimeout: null,
+        handleFileClick(file) {
+            if (!file) return;
+            if (this.clickTimeout) {
+                clearTimeout(this.clickTimeout);
+                this.clickTimeout = null;
+                return;
+            }
+            this.clickTimeout = setTimeout(() => {
+                this.selectFile(file);
+                this.clickTimeout = null;
+            }, 250);
+        },
+
+        async restoreFile(id) {
+            if (!confirm('Restore this file?')) return;
+            this.executeRestore([id]);
+        },
+
+        async bulkRestore() {
+            if (!confirm(`Restore ${this.selectedFiles.length} items?`)) return;
+            this.executeRestore(this.selectedFiles.map(f => f.id));
+        },
+
+        async executeRestore(ids) {
+            try {
+                const response = await fetch(`${window.apiBaseUrl}/trash/bulk-restore`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    },
+                    body: JSON.stringify({ ids })
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Restore failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred');
+            }
+        },
+
+        async deleteFile(id) {
+            if (!confirm('Permanently delete this file? This cannot be undone.')) return;
+            this.executeDelete([id]);
+        },
+
+        async bulkDelete() {
+            if (!confirm(`Permanently delete ${this.selectedFiles.length} items? This cannot be undone.`)) return;
+            this.executeDelete(this.selectedFiles.map(f => f.id));
+        },
+
+        async executeDelete(ids) {
+            try {
+                const response = await fetch(`${window.apiBaseUrl}/trash/bulk-destroy`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    },
+                    body: JSON.stringify({ ids })
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Delete failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred');
+            }
+        }
+    }))
+})
+</script>
 @endsection

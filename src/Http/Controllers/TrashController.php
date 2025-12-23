@@ -23,9 +23,14 @@ class TrashController extends Controller
 
     public function empty(Request $request)
     {
-        File::onlyTrashed()
+        $ids = File::onlyTrashed()
             ->where('owner_id', $request->user()->id)
-            ->forceDelete();
+            ->pluck('id')
+            ->toArray();
+
+        if (!empty($ids)) {
+            FileManager::bulkDelete($ids, true);
+        }
 
         return response()->json(['message' => 'Trash emptied']);
     }
@@ -70,7 +75,7 @@ class TrashController extends Controller
             'ids.*' => 'exists:files,id'
         ]);
 
-        File::onlyTrashed()->whereIn('id', $request->ids)->forceDelete();
+        FileManager::bulkDelete($request->ids, true);
 
         return response()->json(['message' => 'Files permanently deleted']);
     }

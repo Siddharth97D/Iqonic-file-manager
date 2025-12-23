@@ -5,6 +5,9 @@ namespace Iqonic\FileManager\Services;
 use Iqonic\FileManager\Models\File;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Iqonic\FileManager\Jobs\SyncFileToS3;
+use Iqonic\FileManager\Jobs\DeleteFileFromS3;
+use Iqonic\FileManager\Models\Setting;
 
 class FileManagerService
 {
@@ -159,7 +162,7 @@ class FileManagerService
         
         $filePath = Storage::disk($disk)->putFileAs($storagePath, $uploadedFile, $filename);
 
-        return File::create([
+        $file = File::create([
             'basename' => $filename,
             'path' => $filePath,
             'type' => 'file',
@@ -170,6 +173,12 @@ class FileManagerService
             'disk' => $disk,
             'size' => $uploadedFile->getSize(),
         ]);
+
+        if (Setting::get('s3_enabled', false)) {
+            dispatch(new SyncFileToS3($file));
+        }
+
+        return $file;
     }
 
     /**
@@ -179,18 +188,37 @@ class FileManagerService
     {
         $oldPath = $file->path;
         $newPath = $file->parent ? $file->parent->path . '/' . $newName : $newName;
+        $oldS3Paths = $this->captureS3Paths($file);
 
         if ($oldPath === $newPath) return true;
 
         if (Storage::disk($file->disk)->exists($oldPath)) {
             if (Storage::disk($file->disk)->move($oldPath, $newPath)) {
                 $this->updateDatabasePaths($file, $file->parent_id, $newPath, $file->disk);
-                $file->update(['basename' => $newName]); // Update basename specifically
+                $file->update(['basename' => $newName]);
+
+                if (Setting::get('s3_enabled', false)) {
+                    if ($file->s3_sync_status === 'synced') {
+                        app(\Iqonic\FileManager\Services\S3SyncService::class)->moveInS3($file, $oldS3Paths[0] ?? null);
+                    } else {
+                        $this->dispatchS3Sync($file);
+                    }
+                    $this->cleanupS3Paths($oldS3Paths);
+                }
                 return true;
             }
         } else {
             $this->updateDatabasePaths($file, $file->parent_id, $newPath, $file->disk);
             $file->update(['basename' => $newName]);
+            
+            if (Setting::get('s3_enabled', false)) {
+                if ($file->s3_sync_status === 'synced') {
+                    app(\Iqonic\FileManager\Services\S3SyncService::class)->moveInS3($file, $oldS3Paths[0] ?? null);
+                } else {
+                    $this->dispatchS3Sync($file);
+                }
+                $this->cleanupS3Paths($oldS3Paths);
+            }
             return true;
         }
 
@@ -203,6 +231,7 @@ class FileManagerService
     public function move(File $file, ?int $parentId): bool
     {
         $oldPath = $file->path;
+        $oldS3Paths = $this->captureS3Paths($file);
         $newPath = $file->basename;
         $newDisk = $file->disk;
         
@@ -229,10 +258,27 @@ class FileManagerService
              // If disks differ, we should copy and delete, but for now we assume same disk.
              if (Storage::disk($file->disk)->move($oldPath, $newPath)) {
                  $this->updateDatabasePaths($file, $parentId, $newPath, $newDisk);
+                 
+                 if (Setting::get('s3_enabled', false)) {
+                     if ($file->s3_sync_status === 'synced') {
+                        app(\Iqonic\FileManager\Services\S3SyncService::class)->moveInS3($file, $oldS3Paths[0] ?? null);
+                     } else {
+                        $this->dispatchS3Sync($file);
+                     }
+                     $this->cleanupS3Paths($oldS3Paths);
+                 }
                  return true;
             }
         } else {
              $this->updateDatabasePaths($file, $parentId, $newPath, $newDisk);
+             if (Setting::get('s3_enabled', false)) {
+                 if ($file->s3_sync_status === 'synced') {
+                    app(\Iqonic\FileManager\Services\S3SyncService::class)->moveInS3($file, $oldS3Paths[0] ?? null);
+                 } else {
+                    $this->dispatchS3Sync($file);
+                 }
+                 $this->cleanupS3Paths($oldS3Paths);
+             }
              return true;
         }
 
@@ -259,18 +305,92 @@ class FileManagerService
     }
 
     /**
+     * Dispatch S3 sync for a file or folder (recursively)
+     */
+    public function dispatchS3Sync(File $file)
+    {
+        if ($file->type === 'file') {
+            dispatch(new SyncFileToS3($file));
+        } else {
+            foreach ($file->children as $child) {
+                $this->dispatchS3Sync($child);
+            }
+        }
+    }
+
+    /**
      * Delete a file or folder
      */
-    public function delete(File $file): bool
+    public function delete(File $file, bool $permanent = false): bool
     {
+        if ($permanent) {
+            if (Setting::get('s3_enabled', false)) {
+                $this->dispatchS3Delete($file);
+            }
+            return $file->forceDelete();
+        }
+
         return $file->delete();
+    }
+
+    /**
+     * Dispatch S3 delete for a file or folder (recursively)
+     */
+    protected function dispatchS3Delete(File $file)
+    {
+        if ($file->type === 'file' && $file->s3_path) {
+            dispatch(new DeleteFileFromS3($file));
+        } else {
+            foreach ($file->children()->withTrashed()->get() as $child) {
+                $this->dispatchS3Delete($child);
+            }
+        }
+    }
+
+    /**
+     * Capture S3 paths for a file or folder (recursively)
+     */
+    protected function captureS3Paths(File $file)
+    {
+        $paths = [];
+        if ($file->type === 'file') {
+            if ($file->s3_path) $paths[] = $file->s3_path;
+            if ($file->s3_thumbnail_path) $paths[] = $file->s3_thumbnail_path;
+        } else {
+            foreach ($file->children()->withTrashed()->get() as $child) {
+                $paths = array_merge($paths, $this->captureS3Paths($child));
+            }
+        }
+        return $paths;
+    }
+
+    /**
+     * Cleanup old S3 paths
+     */
+    protected function cleanupS3Paths(array $s3Paths)
+    {
+        if (!Setting::get('s3_enabled', false)) return;
+        
+        foreach ($s3Paths as $path) {
+            dispatch(new \Iqonic\FileManager\Jobs\DeletePathFromS3($path));
+        }
     }
 
     /**
      * Delete multiple files or folders
      */
-    public function bulkDelete(array $ids): bool
+    public function bulkDelete(array $ids, bool $permanent = false): bool
     {
+        if ($permanent) {
+            if (Setting::get('s3_enabled', false)) {
+                $files = File::withTrashed()->whereIn('id', $ids)->get();
+                foreach ($files as $file) {
+                    $this->dispatchS3Delete($file);
+                }
+            }
+            return File::withTrashed()->whereIn('id', $ids)->forceDelete();
+        }
+
         return File::whereIn('id', $ids)->delete();
     }
 
@@ -360,7 +480,17 @@ class FileManagerService
             } else {
                 foreach ($files as $filePath) {
                     // Get file content
-                    $content = Storage::disk($folder->disk)->get($filePath);
+                    if (Storage::disk($folder->disk)->exists($filePath)) {
+                        $content = Storage::disk($folder->disk)->get($filePath);
+                    } else {
+                        // If not locally, check if we can get it from S3
+                        $fileModel = File::where('path', $filePath)->first();
+                        if ($fileModel && $fileModel->s3_sync_status === 'synced' && $fileModel->s3_url) {
+                            $content = file_get_contents($fileModel->s3_url);
+                        } else {
+                            continue; // Skip if no content found
+                        }
+                    }
                     
                     // Calculate relative path inside the zip
                     $relativePath = substr($filePath, strlen($folder->path) + 1);
@@ -400,13 +530,28 @@ class FileManagerService
                 if ($file->type === 'folder') {
                     $storageFiles = Storage::disk($file->disk)->allFiles($file->path);
                     foreach ($storageFiles as $filePath) {
-                        $content = Storage::disk($file->disk)->get($filePath);
+                         if (Storage::disk($file->disk)->exists($filePath)) {
+                            $content = Storage::disk($file->disk)->get($filePath);
+                        } else {
+                            $childFile = File::where('path', $filePath)->first();
+                            if ($childFile && $childFile->s3_sync_status === 'synced' && $childFile->s3_url) {
+                                $content = file_get_contents($childFile->s3_url);
+                            } else {
+                                continue;
+                            }
+                        }
                         // Relative path: folder_name / relative_path_inside_folder
                         $relativePath = $file->basename . '/' . substr($filePath, strlen($file->path) + 1);
                         $zip->addFromString($relativePath, $content);
                     }
                 } else {
-                    $content = Storage::disk($file->disk)->get($file->path);
+                    if (Storage::disk($file->disk)->exists($file->path)) {
+                        $content = Storage::disk($file->disk)->get($file->path);
+                    } elseif ($file->s3_sync_status === 'synced' && $file->s3_url) {
+                        $content = file_get_contents($file->s3_url);
+                    } else {
+                        continue;
+                    }
                     $zip->addFromString($file->basename, $content);
                 }
             }

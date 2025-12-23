@@ -36,7 +36,11 @@ class ShareController extends Controller
 
         $share->increment('downloads_count');
 
-        // Return download or preview
+        if ($share->file->s3_sync_status === 'synced') {
+            $url = app(\Iqonic\FileManager\Services\S3SyncService::class)->getPresignedUrl($share->file);
+            if ($url) return redirect()->away($url);
+        }
+
         return response()->download(
             \Storage::disk($share->file->disk)->path($share->file->path)
         );

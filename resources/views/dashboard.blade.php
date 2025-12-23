@@ -189,6 +189,25 @@
                              </div>
                         </div>
 
+                        <!-- S3 Sync Status -->
+                        <div class="absolute bottom-3 right-3 z-10">
+                            @if($file->type === 'file')
+                                @if($file->s3_sync_status === 'synced')
+                                    <div class="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center" title="Synced to S3">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                    </div>
+                                @elseif($file->s3_sync_status === 'failed')
+                                    <div class="w-5 h-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center" title="Sync Failed">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                    </div>
+                                @else
+                                    <div class="w-5 h-5 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center" title="Pending Sync">
+                                        <svg class="w-3 h-3 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                                    </div>
+                                @endif
+                            @endif
+                        </div>
+
                         <!-- 3-Dot Menu (Top Right if not picker) -->
                         @if(!$pickerMode)
                         <div class="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -222,10 +241,10 @@
                                     <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
                                 </div>
                             @elseif(str_starts_with($file->mime_type, 'image/'))
-                                <img src="{{ route('file-manager.preview', $file->id) }}" class="object-cover w-full h-full transform transition-transform duration-500">
+                                <img src="{{ $file->preview_url }}" class="object-cover w-full h-full transform transition-transform duration-500">
                             @elseif(str_starts_with($file->mime_type, 'video/') && $file->thumbnail_path)
                                 <div class="relative w-full h-full">
-                                    <img src="{{ route('file-manager.preview', ['file' => $file->id, 'thumbnail' => 'true']) }}" class="object-cover w-full h-full">
+                                    <img src="{{ $file->thumbnail_url }}" class="object-cover w-full h-full">
                                     <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-10">
                                         <div class="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm">
                                             <svg class="w-5 h-5 text-indigo-600 pl-0.5" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"></path></svg>
@@ -287,6 +306,25 @@
                             :class="{'theme-bg-primary theme-border-primary text-white': selectedFiles.some(f => f.id === file.id), 'bg-white/50 border-gray-300': !selectedFiles.some(f => f.id === file.id)}">
                             <svg class="w-4 h-4" x-show="selectedFiles.some(f => f.id === file.id)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                         </div>
+                </div>
+
+                <!-- S3 Sync Status (Search) -->
+                <div class="absolute bottom-3 right-3 z-10" x-show="file.type === 'file'">
+                    <template x-if="file.s3_sync_status === 'synced'">
+                        <div class="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center" title="Synced to S3">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                        </div>
+                    </template>
+                    <template x-if="file.s3_sync_status === 'failed'">
+                        <div class="w-5 h-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center" title="Sync Failed">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                        </div>
+                    </template>
+                    <template x-if="file.s3_sync_status === 'pending'">
+                        <div class="w-5 h-5 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center" title="Pending Sync">
+                            <svg class="w-3 h-3 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                        </div>
+                    </template>
                 </div>
                 
                 <!-- Icon / Thumbnail Area -->
@@ -385,15 +423,26 @@
                                     @if($file->type === 'folder')
                                         <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
                                     @elseif(str_starts_with($file->mime_type, 'image/'))
-                                        <img src="{{ route('file-manager.preview', $file->id) }}" class="h-8 w-8 rounded object-cover">
+                                        <img src="{{ $file->thumbnail_url ?: $file->preview_url }}" class="h-8 w-8 rounded object-cover">
                                     @elseif(str_starts_with($file->mime_type, 'video/') && $file->thumbnail_path)
-                                        <img src="{{ route('file-manager.preview', ['file' => $file->id, 'thumbnail' => 'true']) }}" class="h-8 w-8 rounded object-cover">
+                                        <img src="{{ $file->thumbnail_url }}" class="h-8 w-8 rounded object-cover">
                                     @else
                                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                     @endif
                                 </div>
                                 <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{{ $file->basename }}</div>
+                                    <div class="text-sm font-medium text-gray-900 flex items-center">
+                                        {{ $file->basename }}
+                                        @if($file->type === 'file')
+                                            @if($file->s3_sync_status === 'synced')
+                                                <svg class="w-3 h-3 ml-2 text-green-500" fill="currentColor" viewBox="0 0 20 20" title="Synced to S3"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                            @elseif($file->s3_sync_status === 'failed')
+                                                <svg class="w-3 h-3 ml-2 text-red-500" fill="currentColor" viewBox="0 0 20 20" title="Sync Failed"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                            @else
+                                                <svg class="w-3 h-3 ml-2 text-gray-300 animate-pulse" fill="currentColor" viewBox="0 0 20 20" title="Pending Sync"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                                            @endif
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -465,14 +514,29 @@
                                         <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
                                     </template>
                                     <template x-if="file.type !== 'folder' && file.mime_type.startsWith('image/')">
-                                        <img :src="window.apiBaseUrl + '/files/' + file.id + '/preview'" class="h-8 w-8 rounded object-cover">
+                                        <img :src="file.thumbnail_url || file.preview_url" class="h-8 w-8 rounded object-cover">
                                     </template>
                                     <template x-if="file.type !== 'folder' && !file.mime_type.startsWith('image/')">
                                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                     </template>
                                 </div>
                                 <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900" x-text="file.basename"></div>
+                                    <div class="text-sm font-medium text-gray-900 flex items-center">
+                                        <span x-text="file.basename"></span>
+                                        <template x-if="file.type === 'file'">
+                                            <span>
+                                                <template x-if="file.s3_sync_status === 'synced'">
+                                                    <svg class="w-3 h-3 ml-2 text-green-500" fill="currentColor" viewBox="0 0 20 20" title="Synced to S3"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                                </template>
+                                                <template x-if="file.s3_sync_status === 'failed'">
+                                                    <svg class="w-3 h-3 ml-2 text-red-500" fill="currentColor" viewBox="0 0 20 20" title="Sync Failed"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                                </template>
+                                                <template x-if="file.s3_sync_status === 'pending'">
+                                                    <svg class="w-3 h-3 ml-2 text-gray-300 animate-pulse" fill="currentColor" viewBox="0 0 20 20" title="Pending Sync"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                                                </template>
+                                            </span>
+                                        </template>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -665,6 +729,12 @@
                     class="flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-colors font-medium text-sm">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                 Download
+            </button>
+            <button x-show="s3_enabled"
+                    @click="bulkSyncS3()" 
+                    class="flex items-center px-4 py-2 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-colors font-medium text-sm">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                Sync to S3
             </button>
             <button @click="bulkDelete()" 
                     class="flex items-center px-4 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors font-medium text-sm">

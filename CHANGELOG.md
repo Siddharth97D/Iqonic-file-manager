@@ -4,20 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [1.1.0] - 2025-12-23
 
-
 ### Added
-- AWS S3 SDK dependency (`aws/aws-sdk-php`).
-- Bulk Restore and Bulk Delete functionality in the Trash view.
-- Pagination for the Trash view.
-- Floating bulk action toolbars in Dashboard and Trash views.
+- **AWS S3 Primary Storage**: Complete transition to cloud-native storage. Local files are purged immediately after S3 synchronization.
+- **S3 Presigned URLs**: Secure, on-the-fly URL generation for all file previews and downloads with 1-hour expiration.
+- **Recursive S3 Actions**: Full support for moving and renaming folders directly on S3.
+- **Thumbnail S3 Sync**: Synchronization of image and video thumbnails to S3, with direct cloud serving.
+- **Shared Link Redirection**: Refactored public shares to serve assets directly from S3.
+- **S3 Retention Policy**: Files are preserved in S3 during soft deletion (Trash) and only permanently removed when the trash is emptied.
+- **Bulk S3 Sync**: Capability to manually sync existing local data to S3 from the settings page.
 
 ### Changed
-- Simplified Dashboard 3-dot menu to only include the "Rename" option.
-- Optimized Alpine.js state management to avoid proxy issues during modal editing.
-- Standardized file/folder selection logic across grid and list views.
-- Downgraded `orchestra/testbench` to `^8.0` for PHP 8.1 compatibility.
+- Standardized all media assets to use `preview_url` and `thumbnail_url` attributes for unified S3/local serving.
+- Updated `FileManagerService` to prioritize S3 as the source of truth for downloads and zipping.
+- Improved Alpine.js integration in Trash view to handle large data payloads safely via external script components.
 
 ### Fixed
-- Broken "Rename" functionality for both files and folders.
-- Trash view rendering issues when empty or containing many items.
-- "Rename" API routing to correctly distinguish between files and folders.
+- UI code leak in Trash page caused by nested JSON payload.
+- Broken media previews in Trash and Search results.
+- Temporary ZIP files cleanup after bulk downloads.
+- Reliable dispatching of S3 sync jobs during file upload and processing.
+

@@ -199,6 +199,7 @@
     isSearching: false,
     showSearch: false,
     activeMenuFileId: null,
+    s3_enabled: @json(\Iqonic\FileManager\Models\Setting::get('s3_enabled', false)),
 
     clearSearch() {
         this.searchQuery = '';
@@ -523,6 +524,34 @@
         }
     },
 
+    async bulkSyncS3() {
+        if (!confirm(`Are you sure you want to sync ${this.selectedFiles.length} items to S3?`)) return;
+        
+        try {
+            const response = await fetch(`${window.apiBaseUrl}/files/bulk-sync-s3`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ ids: this.selectedFiles.map(f => f.id) })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.selectedFiles = [];
+                alert(data.message || 'Sync started');
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                alert(data.message || 'Bulk sync failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred');
+        }
+    },
+
     async bulkDownload() {
         try {
             const response = await fetch(`${window.apiBaseUrl}/files/bulk-download`, {
@@ -794,7 +823,7 @@
                     <div class="w-10 h-10 rounded-xl theme-bg-primary flex items-center justify-center shadow-lg shadow-indigo-500/30">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                     </div>
-                    <h1 class="text-2xl font-bold tracking-tight text-white">Media<span class="theme-text-primary">Hub</span></h1>
+                    <h1 class="text-2xl font-bold tracking-tight theme-text-primary">Media<span class="theme-text-primary">Hub</span></h1>
                 </div>
             </div>
             
@@ -1001,7 +1030,7 @@
 
                         <!-- Image Preview -->
                         <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type && currentPreviewFile.mime_type.startsWith('image/')">
-                            <img :src="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/preview`" 
+                            <img :src="currentPreviewFile.preview_url" 
                                  :alt="currentPreviewFile.basename"
                                  class="max-w-full max-h-full object-contain">
                         </template>
@@ -1009,14 +1038,14 @@
                         <!-- Video Preview -->
                         <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type && currentPreviewFile.mime_type.startsWith('video/')">
                             <video :key="currentPreviewFile.id" controls autoplay class="max-w-full max-h-full">
-                                <source :src="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/preview`" :type="currentPreviewFile.mime_type">
+                                <source :src="currentPreviewFile.preview_url" :type="currentPreviewFile.mime_type">
                                 Your browser does not support the video tag.
                             </video>
                         </template>
 
                         <!-- PDF Preview -->
                         <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type === 'application/pdf'">
-                            <iframe :src="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/preview`"
+                            <iframe :src="currentPreviewFile.preview_url"
                                     class="w-full h-full border-0">
                             </iframe>
                         </template>
@@ -1156,5 +1185,6 @@
         </button>
     </div>
 
+    @yield('scripts')
 </body>
 </html>

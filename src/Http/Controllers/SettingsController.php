@@ -5,33 +5,42 @@ namespace Iqonic\FileManager\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Iqonic\FileManager\Models\Setting;
+use Iqonic\FileManager\Services\S3SyncService;
+use Iqonic\FileManager\Jobs\SyncAllFilesToS3;
 use Aws\S3\S3Client;
 
 class SettingsController extends Controller
 {
     public function index()
     {
+        $s3Key = Setting::get('s3_key', '');
+        $s3Secret = Setting::get('s3_secret', '');
+
+        try { $s3Key = decrypt($s3Key); } catch (\Exception $e) {}
+        try { $s3Secret = decrypt($s3Secret); } catch (\Exception $e) {}
+
         $settings = [
             'compress_images' => Setting::get('compress_images', false),
             'compression_quality' => Setting::get('compression_quality', 80),
             'convert_to_webp' => Setting::get('convert_to_webp', false),
             's3_enabled' => Setting::get('s3_enabled', false),
-            's3_key' => Setting::get('s3_key', ''),
-            's3_secret' => Setting::get('s3_secret', ''),
+            's3_key' => $s3Key,
+            's3_secret' => $s3Secret,
             's3_region' => Setting::get('s3_region', 'us-east-1'),
             's3_bucket' => Setting::get('s3_bucket', ''),
+            's3_root_folder' => Setting::get('s3_root_folder', ''),
             's3_endpoint' => Setting::get('s3_endpoint', ''),
             // Theme settings
             'theme_primary_color' => Setting::get('theme_primary_color', '#3B82F6'),
             'theme_sidebar_bg' => Setting::get('theme_sidebar_bg', '#1F2937'),
             'theme_sidebar_text' => Setting::get('theme_sidebar_text', '#F3F4F6'),
             'theme_sidebar_active' => Setting::get('theme_sidebar_active', '#3B82F6'),
-            'theme_sidebar_hover_bg' => Setting::get('theme_sidebar_hover_bg', '#ffffff1a'), // Default 10% white (hex with opacity) roughly
+            'theme_sidebar_hover_bg' => Setting::get('theme_sidebar_hover_bg', '#ffffff1a'), 
             'theme_sidebar_hover_text' => Setting::get('theme_sidebar_hover_text', '#ffffff'),
             'theme_active_font_color' => Setting::get('theme_active_font_color', '#ffffff'),
             'theme_border_radius' => Setting::get('theme_border_radius', '0.5rem'),
             'theme_spacing' => Setting::get('theme_spacing', '1rem'),
-            'theme_font_family' => Setting::get('theme_font_family', 'Maven Pro, sans-serif'), // Updated default
+            'theme_font_family' => Setting::get('theme_font_family', 'Maven Pro, sans-serif'), 
             'theme_font_size' => Setting::get('theme_font_size', '14px'),
         ];
         
@@ -51,6 +60,7 @@ class SettingsController extends Controller
             's3_secret' => 'nullable|string',
             's3_region' => 'nullable|string',
             's3_bucket' => 'nullable|string',
+            's3_root_folder' => 'nullable|string',
             's3_endpoint' => 'nullable|string',
             // Theme validation
             'theme_primary_color' => 'nullable|string',
@@ -67,6 +77,12 @@ class SettingsController extends Controller
         ]);
         
         foreach ($validated as $key => $value) {
+            // Encrypt sensitive S3 keys
+            if ($key === 's3_key' || $key === 's3_secret') {
+                if ($value) {
+                    $value = encrypt($value);
+                }
+            }
             Setting::set($key, $value);
         }
         
@@ -108,5 +124,19 @@ class SettingsController extends Controller
                 'message' => 'Connection failed: ' . $e->getMessage()
             ], 422);
         }
+    }
+
+    public function syncExistingData()
+    {
+        if (!Setting::get('s3_enabled', false)) {
+            return response()->json(['success' => false, 'message' => 'S3 is not enabled.'], 422);
+        }
+
+        dispatch(new SyncAllFilesToS3());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bulk sync started in the background.'
+        ]);
     }
 }

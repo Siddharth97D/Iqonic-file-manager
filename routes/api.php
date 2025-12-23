@@ -24,6 +24,7 @@ Route::group([
     Route::post('/files/bulk-delete', [FileController::class, 'bulkDestroy']);
     Route::post('/files/bulk-move', [FileController::class, 'bulkUpdate']);
     Route::post('/files/bulk-download', [FileController::class, 'bulkDownload']);
+    Route::post('/files/bulk-sync-s3', [FileController::class, 'bulkSyncS3']);
     
     // Upload
     Route::post('/files/upload', [UploadController::class, 'upload']);
@@ -51,6 +52,7 @@ Route::group([
     // Settings
     Route::patch('/settings', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'update']);
     Route::post('/settings/test-s3', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'testS3Connection']);
+    Route::post('/settings/sync-s3', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'syncExistingData']);
 
 });
 

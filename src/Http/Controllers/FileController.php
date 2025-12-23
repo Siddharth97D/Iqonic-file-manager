@@ -52,20 +52,37 @@ class FileController extends Controller
         return response()->json(['message' => 'File restored']);
     }
 
-    public function download(File $file)
+    public function download(File $file, \Iqonic\FileManager\Services\S3SyncService $s3Service)
     {
         $this->authorize('view', $file);
         
+        if ($file->s3_sync_status === 'synced' && $file->s3_path) {
+            $url = $s3Service->getPresignedUrl($file);
+            if ($url) return redirect()->away($url);
+        }
+
         return response()->download(Storage::disk($file->disk)->path($file->path));
     }
 
 
-    public function preview(File $file)
+    public function preview(File $file, \Iqonic\FileManager\Services\S3SyncService $s3Service)
     {
         $this->authorize('view', $file);
         
-        // Serve thumbnail if requested and available
-        if (request()->has('thumbnail') && $file->thumbnail_path) {
+        $useThumbnail = request()->has('thumbnail');
+
+        if ($file->s3_sync_status === 'synced') {
+            if ($useThumbnail && $file->s3_thumbnail_path) {
+                $url = $s3Service->getPresignedUrl($file, '+1 hour', true);
+                if ($url) return redirect()->away($url);
+            } elseif (!$useThumbnail && $file->s3_path) {
+                $url = $s3Service->getPresignedUrl($file);
+                if ($url) return redirect()->away($url);
+            }
+        }
+
+        // Serve local thumbnail if requested and available
+        if ($useThumbnail && $file->thumbnail_path) {
             $thumbPath = Storage::disk($file->disk)->path($file->thumbnail_path);
             if (file_exists($thumbPath)) {
                 return response()->file($thumbPath);
@@ -74,6 +91,10 @@ class FileController extends Controller
         
         $path = Storage::disk($file->disk)->path($file->path);
         
+        if (!file_exists($path)) {
+            abort(404, 'File not found locally and not yet synced to S3.');
+        }
+
         // For video files, use streaming response with Range support
         if (str_starts_with($file->mime_type, 'video/')) {
             return response()->file($path, [
@@ -147,5 +168,21 @@ class FileController extends Controller
         $zipPath = FileManager::bulkDownload($request->ids);
 
         return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
+    public function bulkSyncS3(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:files,id'
+        ]);
+
+        $files = File::whereIn('id', $request->ids)->get();
+
+        foreach ($files as $file) {
+            FileManager::dispatchS3Sync($file);
+        }
+
+        return response()->json(['message' => 'Bulk sync started']);
     }
 }
