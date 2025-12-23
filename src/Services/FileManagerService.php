@@ -304,19 +304,7 @@ class FileManagerService
         }
     }
 
-    /**
-     * Dispatch S3 sync for a file or folder (recursively)
-     */
-    public function dispatchS3Sync(File $file)
-    {
-        if ($file->type === 'file') {
-            dispatch(new SyncFileToS3($file));
-        } else {
-            foreach ($file->children as $child) {
-                $this->dispatchS3Sync($child);
-            }
-        }
-    }
+
 
     /**
      * Delete a file or folder
@@ -560,4 +548,21 @@ class FileManagerService
 
         return $zipPath;
     }
+
+    /**
+     * Dispatch S3 sync for a file or folder (recursively)
+     */
+    public function dispatchS3Sync(File $file)
+    {
+        if (!Setting::get('s3_enabled', false)) return;
+
+        if ($file->type === 'file') {
+            dispatch(new SyncFileToS3($file));
+        } else {
+            foreach ($file->children()->withTrashed()->get() as $child) {
+                $this->dispatchS3Sync($child);
+            }
+        }
+    }
 }
+

@@ -22,14 +22,14 @@ class S3SyncService
             return $this->client;
         }
 
-        if (!Setting::get('s3_enabled', false)) {
-            return null;
-        }
-
         $key = Setting::get('s3_key');
         $secret = Setting::get('s3_secret');
         $region = Setting::get('s3_region', 'us-east-1');
         $endpoint = Setting::get('s3_endpoint');
+
+        if (!$key || !$secret) {
+            return null;
+        }
 
         // Decrypt values if they are encrypted
         try {
@@ -186,6 +186,7 @@ class S3SyncService
         if (!$file->s3_path) return;
 
         $client = $this->getClient();
+        if (!$client) return;
         $bucket = Setting::get('s3_bucket');
 
         try {
@@ -218,6 +219,7 @@ class S3SyncService
         if (!$oldS3Path) return;
 
         $client = $this->getClient();
+        if (!$client) return;
         $bucket = Setting::get('s3_bucket');
         $rootFolder = Setting::get('s3_root_folder', '');
         $newS3Path = $this->getS3Path($file->path, $rootFolder);
@@ -303,6 +305,8 @@ class S3SyncService
         if (!$path) return null;
 
         $client = $this->getClient();
+        if (!$client) return null;
+        
         $bucket = Setting::get('s3_bucket');
 
         try {

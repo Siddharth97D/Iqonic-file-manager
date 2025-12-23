@@ -172,6 +172,10 @@ class FileController extends Controller
 
     public function bulkSyncS3(Request $request)
     {
+        if (!\Iqonic\FileManager\Models\Setting::get('s3_enabled', false)) {
+            return response()->json(['message' => 'S3 Sync is disabled. Please enable it in settings first.'], 403);
+        }
+
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'exists:files,id'
