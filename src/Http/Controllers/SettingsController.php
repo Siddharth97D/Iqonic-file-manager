@@ -42,6 +42,10 @@ class SettingsController extends Controller
             'theme_spacing' => Setting::get('theme_spacing', '1rem'),
             'theme_font_family' => Setting::get('theme_font_family', 'Maven Pro, sans-serif'), 
             'theme_font_size' => Setting::get('theme_font_size', '14px'),
+            // Video settings
+            'video_thumbnails_enabled' => Setting::get('video_thumbnails_enabled', true),
+            'ffmpeg_path' => Setting::get('ffmpeg_path', config('file-manager.ffmpeg.ffmpeg_path', '/usr/bin/ffmpeg')),
+            'ffprobe_path' => Setting::get('ffprobe_path', config('file-manager.ffmpeg.ffprobe_path', '/usr/bin/ffprobe')),
         ];
         
         $targetInput = ''; // Required by layout
@@ -74,6 +78,10 @@ class SettingsController extends Controller
             'theme_spacing' => 'nullable|string',
             'theme_font_family' => 'nullable|string',
             'theme_font_size' => 'nullable|string',
+            // Video validation
+            'video_thumbnails_enabled' => 'boolean',
+            'ffmpeg_path' => 'nullable|string',
+            'ffprobe_path' => 'nullable|string',
         ]);
         
         foreach ($validated as $key => $value) {
@@ -138,5 +146,52 @@ class SettingsController extends Controller
             'success' => true,
             'message' => 'Bulk sync started in the background.'
         ]);
+    }
+
+
+
+    public function testFFMpeg(Request $request)
+    {
+        $validated = $request->validate([
+            'ffmpeg_path' => 'required|string',
+            'ffprobe_path' => 'required|string',
+        ]);
+
+        try {
+            $ffmpegPath = $validated['ffmpeg_path'];
+            $ffprobePath = $validated['ffprobe_path'];
+
+            $ffmpegOutput = [];
+            $ffmpegReturnVar = -1;
+            exec(escapeshellcmd($ffmpegPath) . " -version 2>&1", $ffmpegOutput, $ffmpegReturnVar);
+
+            $ffprobeOutput = [];
+            $ffprobeReturnVar = -1;
+            exec(escapeshellcmd($ffprobePath) . " -version 2>&1", $ffprobeOutput, $ffprobeReturnVar);
+
+            if ($ffmpegReturnVar === 0 && $ffprobeReturnVar === 0) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'FFmpeg and FFProbe are working properly!',
+                    'ffmpeg_version' => $ffmpegOutput[0] ?? 'Unknown',
+                    'ffprobe_version' => $ffprobeOutput[0] ?? 'Unknown',
+                ]);
+            } else {
+                $error = "FFmpeg test failed. ";
+                if ($ffmpegReturnVar !== 0) $error .= "FFmpeg Error (Code $ffmpegReturnVar). ";
+                if ($ffprobeReturnVar !== 0) $error .= "FFProbe Error (Code $ffprobeReturnVar). ";
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => $error,
+                    'output' => implode("\n", array_merge($ffmpegOutput, $ffprobeOutput))
+                ], 422);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Test failed: ' . $e->getMessage()
+            ], 422);
+        }
     }
 }

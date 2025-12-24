@@ -22,14 +22,9 @@ class ProcessImageJob implements ShouldQueue
 
     public function handle(): void
     {
-        // Get settings from database instead of config
-        $compressEnabled = \Iqonic\FileManager\Models\Setting::get('compress_images', false);
-        $quality = \Iqonic\FileManager\Models\Setting::get('compression_quality', 80);
-        $convertToWebP = \Iqonic\FileManager\Models\Setting::get('convert_to_webp', false);
-
-        if (!$compressEnabled && !$convertToWebP) {
-            return; // No optimization needed
-        }
+        // Always proceed if we need a thumbnail, regardless of optimization settings
+        // But optimization only happens if enabled
+        $needsOptimization = $compressEnabled || $convertToWebP;
 
         try {
              // Get file content
@@ -40,47 +35,67 @@ class ProcessImageJob implements ShouldQueue
             }
 
             $content = $disk->get($this->file->path);
+            $oldPath = $this->file->path;
             $image = Image::make($content);
 
-            // WebP Conversion
-            if ($convertToWebP) {
-                $newPath = pathinfo($this->file->path, PATHINFO_DIRNAME) . '/' . pathinfo($this->file->path, PATHINFO_FILENAME) . '.webp';
-                
-                $image->encode('webp', $quality);
-                $disk->put($newPath, (string) $image);
+            if ($needsOptimization) {
+                // WebP Conversion
+                if ($convertToWebP) {
+                    $newPath = pathinfo($oldPath, PATHINFO_DIRNAME) . '/' . pathinfo($oldPath, PATHINFO_FILENAME) . '.webp';
+                    
+                    Log::info("Converting image to WebP: {$oldPath} -> {$newPath}");
+                    
+                    $image->encode('webp', $quality);
+                    $disk->put($newPath, (string) $image);
 
-                // Delete original file
-                if ($this->file->path !== $newPath && $disk->exists($this->file->path)) {
-                     $disk->delete($this->file->path);
+                    // Update File Model
+                    $this->file->update([
+                        'path' => $newPath,
+                        'basename' => basename($newPath),
+                        'extension' => 'webp',
+                        'mime_type' => 'image/webp',
+                        'size' => $disk->size($newPath),
+                    ]);
+
+                    // Delete original file
+                    if ($oldPath !== $newPath && $disk->exists($oldPath)) {
+                         $disk->delete($oldPath);
+                    }
+
+                } elseif ($compressEnabled) {
+                    // Just compress in place
+                    $format = $this->file->extension;
+                    $q = $quality;
+                    
+                    // Normalize quality for PNG (0-9)
+                    if (strtolower($format) === 'png') {
+                        $q = (int) ($quality / 10);
+                        if ($q > 9) $q = 9;
+                    }
+
+                    Log::info("Compressing image in place: {$oldPath} (Quality: {$q})");
+                    
+                    $image->encode($format, $q);
+                    $disk->put($oldPath, (string) $image);
+                    
+                    // Update size
+                    $this->file->update(['size' => $disk->size($oldPath)]);
                 }
-
-                // Update File Model
-                $this->file->update([
-                    'path' => $newPath,
-                    'basename' => basename($newPath),
-                    'extension' => 'webp',
-                    'mime_type' => 'image/webp',
-                    'size' => $disk->size($newPath),
-                ]);
-
-            } elseif ($compressEnabled) {
-                // Just compress in place
-                $format = $this->file->extension;
-                $image->encode($format, $quality);
-                $disk->put($this->file->path, (string) $image);
-                
-                // Update size
-                $this->file->update(['size' => $disk->size($this->file->path)]);
             }
 
-            // Generate Thumbnail (always generate)
+            // Generate Thumbnail
+            Log::info("Generating thumbnail for: " . $this->file->path);
             $thumb = Image::make($content);
             $thumb->fit(150, 150);
             
-            $thumbName = 'thumb_' . basename($this->file->path);
+            // Always use webp for thumbnails for best performance
+            $thumbName = 'thumb_' . pathinfo($this->file->path, PATHINFO_FILENAME) . '.webp';
             $thumbPath = dirname($this->file->path) . '/' . $thumbName;
             
             $disk->put($thumbPath, (string) $thumb->encode('webp', 80));
+            
+            $this->file->update(['thumbnail_path' => $thumbPath]);
+            Log::info("Thumbnail generated: {$thumbPath}");
 
         } catch (\Exception $e) {
             Log::error("Image Processing Failed: " . $e->getMessage());

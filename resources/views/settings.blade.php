@@ -15,6 +15,12 @@
         s3_root_folder: '{{ $settings['s3_root_folder'] }}',
         s3_endpoint: '{{ $settings['s3_endpoint'] }}',
         sync_loading: false,
+        // Video settings
+        video_thumbnails_enabled: {{ $settings['video_thumbnails_enabled'] ? 'true' : 'false' }},
+        ffmpeg_path: '{{ $settings['ffmpeg_path'] }}',
+        ffprobe_path: '{{ $settings['ffprobe_path'] }}',
+        testing_ffmpeg: false,
+        ffmpegTestResult: null,
         // Theme settings
         theme_primary_color: '{{ $settings['theme_primary_color'] }}',
         theme_sidebar_bg: '{{ $settings['theme_sidebar_bg'] }}',
@@ -142,7 +148,11 @@
                         theme_border_radius: this.theme_border_radius,
                         theme_spacing: this.theme_spacing,
                         theme_font_family: this.theme_font_family,
-                        theme_font_size: this.theme_font_size
+                        theme_font_size: this.theme_font_size,
+                        // Video settings
+                        video_thumbnails_enabled: this.video_thumbnails_enabled,
+                        ffmpeg_path: this.ffmpeg_path,
+                        ffprobe_path: this.ffprobe_path,
                     })
                 });
                 
@@ -209,9 +219,51 @@
             } finally {
                 this.sync_loading = false;
             }
+        },
+
+        async testFFMpeg() {
+            if (!(await this.saveSettings())) return;
+            this.testing_ffmpeg = true;
+            this.ffmpegTestResult = null;
+            try {
+                const response = await fetch(`${window.apiBaseUrl}/settings/test-ffmpeg`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        ffmpeg_path: this.ffmpeg_path,
+                        ffprobe_path: this.ffprobe_path
+                    })
+                });
+                
+                const data = await response.json();
+                this.ffmpegTestResult = data;
+            } catch (error) {
+                this.ffmpegTestResult = { success: false, message: 'FFmpeg test failed' };
+            } finally {
+                this.testing_ffmpeg = false;
+            }
         }
     }">
-        
+        <!-- Background Task Warning -->
+        <div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 rounded-r-lg shadow-sm">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-amber-800">Queue Worker Required</h3>
+                    <div class="mt-2 text-sm text-amber-700">
+                        <p>Features like <strong>Image Compression</strong>, <strong>Video Thumbnails</strong>, and <strong>S3 Synchronization</strong> run in the background. Please ensure your queue worker is running: <code>php artisan queue:work</code></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- S3 Storage Settings -->
         <div class="glass-panel rounded-2xl p-6 mb-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Amazon S3 Storage</h3>
@@ -520,14 +572,89 @@
                     </button>
                 </div>
 
-                <!-- Save Button -->
-                <div class="pt-4 border-t border-gray-200">
-                    <button @click="saveSettings()" 
-                            :disabled="saving"
-                            class="w-full theme-bg-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50">
-                        <span x-text="saving ? 'Saving...' : 'Save Settings'"></span>
+        <!-- Video Processing Settings -->
+        <div class="glass-panel rounded-2xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Video Processing</h3>
+                <a href="https://ffmpeg.org/download.html" target="_blank" class="text-xs theme-text-primary hover:underline flex items-center">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    FFmpeg Setup Guide
+                </a>
+            </div>
+            
+            <div class="space-y-6">
+                <!-- Video Thumbnails Toggle -->
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700">Generate Video Thumbnails</label>
+                        <p class="text-sm text-gray-500">Automatically extract a frame as thumbnail from uploaded videos (Requires FFmpeg)</p>
+                    </div>
+                    <button @click="video_thumbnails_enabled = !video_thumbnails_enabled" 
+                            type="button" 
+                            :class="video_thumbnails_enabled ? 'theme-bg-primary' : 'bg-gray-200'"
+                            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 theme-ring-primary focus:ring-offset-2">
+                        <span :class="video_thumbnails_enabled ? 'translate-x-5' : 'translate-x-0'"
+                              class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
                     </button>
                 </div>
+
+                <!-- FFmpeg Paths (shown when enabled) -->
+                <div x-show="video_thumbnails_enabled" class="pl-4 border-l-2 border-gray-200 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">FFmpeg Binary Path</label>
+                        <input type="text" 
+                               x-model="ffmpeg_path"
+                               placeholder="/usr/bin/ffmpeg"
+                               class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all text-sm">
+                        <p class="text-[10px] text-gray-400 mt-1">Full path to the ffmpeg executable on your server.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">FFProbe Binary Path</label>
+                        <input type="text" 
+                               x-model="ffprobe_path"
+                               placeholder="/usr/bin/ffprobe"
+                               class="w-full px-3 py-2 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-lg focus:outline-none focus:ring-2 theme-ring-primary theme-border-primary transition-all text-sm">
+                    </div>
+
+                    <!-- Test FFmpeg Button -->
+                    <div>
+                        <button @click="testFFMpeg()" 
+                                :disabled="testing_ffmpeg"
+                                class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50 transition-colors">
+                            <span x-text="testing_ffmpeg ? 'Testing...' : 'Test FFmpeg Configuration'"></span>
+                        </button>
+                        
+                        <!-- Test Result -->
+                        <div x-show="ffmpegTestResult" class="mt-3">
+                            <div x-show="ffmpegTestResult && ffmpegTestResult.success" class="p-3 bg-green-50 border border-green-100 rounded-lg">
+                                <div class="flex items-center text-green-700 text-xs font-medium mb-1">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                    FFmpeg is Ready!
+                                </div>
+                                <p class="text-[10px] text-green-600 truncate" x-text="ffmpegTestResult.ffmpeg_version"></p>
+                            </div>
+                            <div x-show="ffmpegTestResult && !ffmpegTestResult.success" class="p-3 bg-red-50 border border-red-100 rounded-lg">
+                                <div class="flex items-center text-red-700 text-xs font-medium mb-1">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                                    Configuration Error
+                                </div>
+                                <p class="text-[10px] text-red-600" x-text="ffmpegTestResult.message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="pt-4 border-t border-gray-200">
+                    <button @click="if(await saveSettings()) alert('Video settings saved!')" 
+                            :disabled="saving"
+                            class="w-full theme-bg-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 transition-all">
+                        <span x-text="saving ? 'Saving...' : 'Save Video Settings'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
             </div>
         </div>
     </div>

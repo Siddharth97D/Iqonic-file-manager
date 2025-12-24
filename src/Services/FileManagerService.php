@@ -174,12 +174,40 @@ class FileManagerService
             'size' => $uploadedFile->getSize(),
         ]);
 
-        if (Setting::get('s3_enabled', false)) {
-            dispatch(new SyncFileToS3($file));
-        }
+        $this->dispatchMediaJobs($file);
 
         return $file;
     }
+
+    /**
+     * Dispatch media processing jobs and S3 sync in a chain
+     */
+    protected function dispatchMediaJobs(File $file)
+    {
+        $chain = [];
+        $isImage = str_starts_with($file->mime_type, 'image/');
+        $isVideo = str_starts_with($file->mime_type, 'video/');
+
+        if ($isImage) {
+            $chain[] = new \Iqonic\FileManager\Jobs\ProcessImageJob($file);
+        } elseif ($isVideo && Setting::get('video_thumbnails_enabled', true)) {
+            $chain[] = new \Iqonic\FileManager\Jobs\GenerateVideoThumbnailJob($file);
+        }
+
+        if (Setting::get('s3_enabled', false)) {
+            $chain[] = new \Iqonic\FileManager\Jobs\SyncFileToS3($file);
+        }
+
+        if (!empty($chain)) {
+            $firstJob = array_shift($chain);
+            if (!empty($chain)) {
+                dispatch($firstJob)->chain($chain);
+            } else {
+                dispatch($firstJob);
+            }
+        }
+    }
+
 
     /**
      * Rename a file or folder

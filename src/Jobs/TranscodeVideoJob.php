@@ -41,8 +41,8 @@ class TranscodeVideoJob implements ShouldQueue
         file_put_contents($localPath, $disk->get($this->file->path));
 
         $ffmpeg = \FFMpeg\FFMpeg::create([
-            'ffmpeg.binaries'  => config('file-manager.ffmpeg.ffmpeg_path', '/usr/bin/ffmpeg'),
-            'ffprobe.binaries' => config('file-manager.ffmpeg.ffprobe_path', '/usr/bin/ffprobe'),
+            'ffmpeg.binaries'  => \Iqonic\FileManager\Models\Setting::get('ffmpeg_path', config('file-manager.ffmpeg.ffmpeg_path', '/usr/bin/ffmpeg')),
+            'ffprobe.binaries' => \Iqonic\FileManager\Models\Setting::get('ffprobe_path', config('file-manager.ffmpeg.ffprobe_path', '/usr/bin/ffprobe')),
             'timeout'          => 3600,
             'ffmpeg.threads'   => 12,
         ]);

@@ -52,6 +52,7 @@ Route::group([
     // Settings
     Route::patch('/settings', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'update']);
     Route::post('/settings/test-s3', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'testS3Connection']);
+    Route::post('/settings/test-ffmpeg', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'testFFMpeg']);
     Route::post('/settings/sync-s3', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'syncExistingData']);
 
 });

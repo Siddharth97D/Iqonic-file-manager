@@ -34,8 +34,8 @@ class GenerateVideoThumbnailJob implements ShouldQueue
 
         try {
             $ffmpeg = \FFMpeg\FFMpeg::create([
-                'ffmpeg.binaries'  => config('file-manager.ffmpeg.ffmpeg_path', '/usr/bin/ffmpeg'),
-                'ffprobe.binaries' => config('file-manager.ffmpeg.ffprobe_path', '/usr/bin/ffprobe'),
+                'ffmpeg.binaries'  => \Iqonic\FileManager\Models\Setting::get('ffmpeg_path', config('file-manager.ffmpeg.ffmpeg_path', '/usr/bin/ffmpeg')),
+                'ffprobe.binaries' => \Iqonic\FileManager\Models\Setting::get('ffprobe_path', config('file-manager.ffmpeg.ffprobe_path', '/usr/bin/ffprobe')),
                 'timeout'          => 3600, // The underlying process time-out
                 'ffmpeg.threads'   => 12,   // The number of threads that FFMpeg should use
             ]);
