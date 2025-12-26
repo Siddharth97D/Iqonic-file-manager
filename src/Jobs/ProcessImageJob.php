@@ -22,8 +22,12 @@ class ProcessImageJob implements ShouldQueue
 
     public function handle(): void
     {
-        // Always proceed if we need a thumbnail, regardless of optimization settings
-        // But optimization only happens if enabled
+        // Get settings from database
+        $compressEnabled = \Iqonic\FileManager\Models\Setting::get('compress_images', false);
+        $quality = \Iqonic\FileManager\Models\Setting::get('compression_quality', 80);
+        $convertToWebP = \Iqonic\FileManager\Models\Setting::get('convert_to_webp', false);
+        
+        // Always proceed to generate thumbnails, but optimization only happens if enabled
         $needsOptimization = $compressEnabled || $convertToWebP;
 
         try {
