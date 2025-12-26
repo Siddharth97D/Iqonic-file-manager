@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.4] - 2025-12-26
+
+### Fixed
+- **Critical**: Restored missing variable definitions in `ProcessImageJob` that caused "undefined variable $compressEnabled" error on fresh installations
+
 ## [1.1.3] - 2025-12-26
 
 ### Added
