@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2025-12-26
+
+### Added
+- **Enhanced PDF Preview**: PDFs now display significantly larger in the preview modal with improved readability
+- **PDF Viewer Controls**: Added built-in PDF navigation toolbar, navigation panes, and optimized view parameters
+- **Missing Migration**: Added `file_manager_settings` table migration that was previously missing
+
+### Changed
+- **PDF Display**: Removed size constraints and set minimum height of 600px for better PDF viewing experience
+- **PDF Toolbar**: Added filename and document type display in preview modal
+
 ## [1.1.2] - 2025-12-23
 
 ### Added

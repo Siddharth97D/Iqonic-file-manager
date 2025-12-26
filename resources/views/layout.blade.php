@@ -1045,9 +1045,25 @@
 
                         <!-- PDF Preview -->
                         <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type === 'application/pdf'">
-                            <iframe :src="currentPreviewFile.preview_url"
-                                    class="w-full h-full border-0">
-                            </iframe>
+                            <div class="w-full h-full flex flex-col">
+                                <!-- PDF Toolbar -->
+                                <div class="flex items-center justify-between bg-gray-800 bg-opacity-80 px-4 py-2 mb-2 rounded">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span class="text-white text-sm font-medium" x-text="currentPreviewFile.basename"></span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-white text-xs opacity-75">PDF Document</span>
+                                    </div>
+                                </div>
+                                <!-- PDF Viewer -->
+                                <iframe :src="currentPreviewFile.preview_url + '#toolbar=1&navpanes=1&scrollbar=1&view=FitH'"
+                                        class="w-full flex-1 border-0 rounded bg-white"
+                                        style="min-height: 600px;">
+                                </iframe>
+                            </div>
                         </template>
 
                         <!-- Other Files (Generic) -->

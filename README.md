@@ -156,6 +156,7 @@ Need a **Laravel file selector** for your blog's featured image? Use the `picker
 ### Laravel Media Library UI
 If you find the default Spatie Media Library too "headless", use this package as your **Laravel media library UI**. It provides the visual layer you need to browse, search, and manage your processed media variants.
 
+## If this package helped you, please ⭐ star the repo.
 ---
 
 ## 📄 License
