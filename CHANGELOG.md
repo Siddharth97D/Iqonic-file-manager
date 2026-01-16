@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5] - 2026-01-16
+
+### Changed
+- **Code Quality**: Added return type declarations to Eloquent relationship methods for better IDE support and Laravel 10+ compatibility
+- **Verified Compatibility**: Comprehensive code review confirms full compatibility with Laravel 10.x, 11.x, and 12.x
+
+### Note
+- Laravel 10/11/12 compatibility verified across all package components
+- All core Laravel APIs used are stable across the supported versions
+- No breaking changes or deprecated method usage found
+
+## [1.2.0] - 2025-12-26
+
+### Added
+- **Laravel 12 Support**: Package now supports Laravel 10, 11, and 12
+- **PHP 8.2 & 8.3 Support**: Added support for newer PHP versions
+- **Intervention/Image v3 Support**: Now compatible with both v2.7 and v3.x (choose based on your needs)
+
+### Changed
+- **Extended PHP Requirement**: Now supports `^8.1|^8.2|^8.3`
+- **Updated Dependencies**: All illuminate packages now support `^10.0|^11.0|^12.0`
+- **Updated Dev Dependencies**: Orchestra Testbench and Pest packages updated for Laravel 12 compatibility
+
+### Note
+- Laravel 12 users must use PHP 8.2 or higher (Laravel 12 requirement)
+- Existing Laravel 10 & 11 users can continue using PHP 8.1+
+- Both Intervention/Image v2.7 and v3.x are supported - no migration required
+
 ## [1.1.4] - 2025-12-26
 
 ### Fixed

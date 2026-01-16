@@ -4,6 +4,7 @@ namespace Iqonic\FileManager\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -56,12 +57,12 @@ class File extends Model
 
 
 
-    public function parent()
+    public function parent(): BelongsTo
     {
         return $this->belongsTo(File::class, 'parent_id');
     }
 
-    public function children()
+    public function children(): HasMany
     {
         return $this->hasMany(File::class, 'parent_id');
     }

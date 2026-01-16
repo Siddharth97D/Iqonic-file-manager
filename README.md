@@ -14,6 +14,14 @@ While there are many file managers for Laravel, this package is built for develo
 
 ---
 
+## 📋 Requirements
+
+- **PHP**: 8.1, 8.2, or 8.3
+- **Laravel**: 10.x, 11.x, or 12.x
+- **Note**: Laravel 12 requires PHP 8.2 or higher
+
+---
+
 ## ✨ Key Features
 
 ### ✅ Core Functionalities
