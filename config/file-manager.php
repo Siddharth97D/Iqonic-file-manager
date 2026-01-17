@@ -102,15 +102,43 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Trash Configuration
+    | Image Variants
     |--------------------------------------------------------------------------
     |
-    | Configuration for the recycle bin.
+    | Configure automatic generation of image variants with different sizes.
+    | Each preset defines width, height, and fit mode (crop, contain, cover).
     |
     */
-    'trash' => [
-        'enabled' => true,
-        'days_to_keep' => 30,
+    'image_variants' => [
+        'enabled' => env('IMAGE_VARIANTS_ENABLED', true),
+        'presets' => [
+            'thumbnail' => [
+                'width' => 150,
+                'height' => 150,
+                'fit' => 'crop', // crop, contain, cover
+                'quality' => 80,
+            ],
+            'small' => [
+                'width' => 400,
+                'height' => 400,
+                'fit' => 'contain',
+                'quality' => 85,
+            ],
+            'medium' => [
+                'width' => 800,
+                'height' => 800,
+                'fit' => 'contain',
+                'quality' => 85,
+            ],
+            'large' => [
+                'width' => 1600,
+                'height' => 1600,
+                'fit' => 'contain',
+                'quality' => 90,
+            ],
+        ],
+        // Generate WebP variants alongside original format
+        'generate_webp' => true,
     ],
 
     /*
@@ -125,6 +153,10 @@ return [
         'enable_video_processing' => true,
         'enable_direct_s3_upload' => false,
         'enable_hls' => false,
+        'enable_favorites' => env('ENABLE_FAVORITES', true),
+        'enable_dark_mode' => env('ENABLE_DARK_MODE', true),
+        'enable_keyboard_shortcuts' => env('ENABLE_KEYBOARD_SHORTCUTS', true),
+        'enable_api' => env('ENABLE_API', true),
     ],
 
     /*

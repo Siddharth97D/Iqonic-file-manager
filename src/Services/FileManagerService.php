@@ -69,12 +69,18 @@ class FileManagerService
             $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
+        // Favorites Filter
+        if (!empty($filters['favorites_only'])) {
+            $query->where('is_favorite', true);
+        }
+
         // Scope Logic
         // Determine if we are in "Search/Filter Mode" or "Navigation Mode"
         $isSearching = !empty($filters['search']) || 
                       (!empty($filters['mime_group']) && $filters['mime_group'] !== 'all') ||
                       !empty($filters['date_from']) || 
-                      !empty($filters['date_to']);
+                      !empty($filters['date_to']) ||
+                      !empty($filters['favorites_only']);
 
         if ($isSearching) {
             // Apply Scope

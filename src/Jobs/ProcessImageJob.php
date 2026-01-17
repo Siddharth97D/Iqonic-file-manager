@@ -101,6 +101,12 @@ class ProcessImageJob implements ShouldQueue
             $this->file->update(['thumbnail_path' => $thumbPath]);
             Log::info("Thumbnail generated: {$thumbPath}");
 
+            // Generate Image Variants
+            if (config('file-manager.image_variants.enabled', true)) {
+                Log::info("Generating image variants for: {$this->file->id}");
+                app(\Iqonic\FileManager\Services\ImageVariantService::class)->generateVariants($this->file);
+            }
+
         } catch (\Exception $e) {
             Log::error("Image Processing Failed: " . $e->getMessage());
         }

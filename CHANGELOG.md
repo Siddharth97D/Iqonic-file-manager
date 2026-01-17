@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-01-17
+
+### Added
+- **Image Variants System**: Automatically generates multiple responsive image sizes (Thumbnail, Small, Medium, Large) + WebP variants on upload.
+- **Favorites System**: Mark files as favorites with `is_favorite` toggle API and filtering support.
+- **User Preferences**: Generic key-value store database tables and API for saving user settings (theme, view mode, etc.).
+- **New API Endpoints**:
+    - `POST /api/files/{id}/favorite`
+    - `GET /api/favorites`
+    - `GET /api/preferences`
+    - `POST /api/preferences`
+    - `GET /api/files/{id}/variant/{preset}`
+- **Models**: Added `UserPreference` model and `FileVariant` relationship.
+- **Config**: Added `image_variants` configuration block with customizable presets.
+
+### Changed
+- **File Model**: Added `imageVariants` relationship and `is_favorite` to casts.
+- **FileManagerService**: Updated `listFiles` to support `favorites_only` filter.
+- **Image Processing**: Enhanced `ProcessImageJob` to trigger variant generation.
+
 ## [1.1.5] - 2026-01-16
 
 ### Changed

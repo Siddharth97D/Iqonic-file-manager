@@ -55,6 +55,30 @@ Route::group([
     Route::post('/settings/test-ffmpeg', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'testFFMpeg']);
     Route::post('/settings/sync-s3', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'syncExistingData']);
 
+    // Favorites
+    Route::post('/files/{file}/favorite', [FileController::class, 'toggleFavorite'])->name('files.favorite');
+    Route::get('/favorites', [FileController::class, 'favorites'])->name('favorites');
+
+    // Image Variant Preview
+    Route::get('/files/{file}/variant/{preset}', function (\Iqonic\FileManager\Models\File $file, string $preset) {
+        $variant = $file->imageVariants()->where('profile', $preset)->first();
+        if (!$variant) abort(404);
+        $path = \Illuminate\Support\Facades\Storage::disk($variant->disk)->path($variant->path);
+        if (!file_exists($path)) abort(404);
+        return response()->file($path);
+    })->name('variant.preview');
+
+    // User Preferences
+    Route::get('/preferences', function(\Illuminate\Http\Request $request) {
+        return response()->json(\Iqonic\FileManager\Models\UserPreference::where('user_id', $request->user()->id)->get());
+    })->name('preferences.index');
+
+    Route::post('/preferences', function(\Illuminate\Http\Request $request) {
+        $request->validate(['key' => 'required|string', 'value' => 'required']);
+        \Iqonic\FileManager\Models\UserPreference::set($request->user()->id, $request->input('key'), $request->input('value'));
+        return response()->json(['message' => 'Preference saved']);
+    })->name('preferences.store');
+
 });
 
 // Public Share Route (No Auth Middleware, but maybe throttle)

@@ -33,6 +33,8 @@ While there are many file managers for Laravel, this package is built for develo
 - **Bulk Actions**: Select multiple files to move or delete in batches.
 - **Trash Bin**: Soft delete system with "Restore" and "Permanently Delete" options.
 - **Zip Downloads**: Download entire folders as `.zip` archives.
+- **Image Variants**: Auto-generate multiple responsive image sizes (Thumbnail, Small, Medium, Large) + WebP support.
+- **Favorites & Preferences**: Mark files as favorites and store user-specific settings.
 
 ### 🎨 Customization
 - **Dynamic Theming**: Change sidebar colors, active states, and fonts directly from settings.
@@ -137,6 +139,33 @@ $files = FileManager::listFiles(['folder_id' => $folder->id]);
 
 ---
 
+### 4. Image Variants & Responsive Images
+Every image upload automatically generates optimized variants based on your config.
+
+```php
+// Get URL for specific size (thumbnail, small, medium, large)
+$url = $file->getVariantUrl('medium');
+
+// Get responsive srcset for <img> tags
+// Returns: "url_small.jpg 400w, url_medium.jpg 800w..."
+$srcset = $file->srcset; 
+```
+
+### 5. User Preferences & Favorites
+Store user-specific settings and mark files as favorites.
+
+```php
+use Iqonic\FileManager\Models\UserPreference;
+
+// Save a preference
+UserPreference::set($user->id, 'theme', 'dark');
+
+// Retrieve a preference
+$theme = UserPreference::get($user->id, 'theme', 'light');
+```
+
+---
+
 ## ⚙️ Configuration
 
 Check `config/file-manager.php` for all settings.
@@ -148,6 +177,8 @@ Check `config/file-manager.php` for all settings.
 | `disk` | `public` | Storage disk (supports `s3`). |
 | `upload.max_size_mb` | `100` | Max upload size per file. |
 | `upload.allowed_mimes` | `[...]` | Allowed file types. |
+| `image_variants` | `[...]` | Config for auto-generated sizes. |
+| `features` | `[...]` | Feature flags (favorites, dark mode, etc). |
 
 ---
 

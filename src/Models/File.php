@@ -19,6 +19,7 @@ class File extends Model
         'owner_id' => 'integer',
         'tenant_id' => 'integer',
         'parent_id' => 'integer',
+        'is_favorite' => 'boolean',
         's3_sync_status' => 'string',
         's3_path' => 'string',
         's3_url' => 'string',
@@ -92,6 +93,11 @@ class File extends Model
         return $this->hasMany(FileVariant::class);
     }
 
+    public function imageVariants(): HasMany
+    {
+        return $this->hasMany(FileVariant::class);
+    }
+
     public function permissions(): HasMany
     {
         return $this->hasMany(FilePermission::class);
@@ -105,5 +111,25 @@ class File extends Model
     public function share(): HasOne
     {
         return $this->hasOne(FileShare::class);
+    }
+
+    /**
+     * Get URL for a specific image variant
+     */
+    public function getVariantUrl(string $preset): ?string
+    {
+        return app(\Iqonic\FileManager\Services\ImageVariantService::class)->getVariantUrl($this, $preset);
+    }
+
+    /**
+     * Get srcset attribute for responsive images
+     */
+    public function getSrcsetAttribute(): string
+    {
+        if (!str_starts_with($this->mime_type, 'image/')) {
+            return '';
+        }
+
+        return app(\Iqonic\FileManager\Services\ImageVariantService::class)->getSrcset($this);
     }
 }

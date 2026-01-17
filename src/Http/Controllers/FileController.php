@@ -189,4 +189,31 @@ class FileController extends Controller
 
         return response()->json(['message' => 'Bulk sync started']);
     }
+
+    public function toggleFavorite(File $file)
+    {
+        if (!config('file-manager.features.enable_favorites', true)) {
+            return response()->json(['message' => 'Favorites feature is disabled'], 403);
+        }
+
+        $this->authorize('view', $file);
+        
+        $file->is_favorite = !$file->is_favorite;
+        $file->save();
+
+        return response()->json([
+            'message' => $file->is_favorite ? 'Added to favorites' : 'Removed from favorites',
+            'is_favorite' => $file->is_favorite
+        ]);
+    }
+
+    public function favorites(Request $request)
+    {
+        if (!config('file-manager.features.enable_favorites', true)) {
+            return response()->json(['message' => 'Favorites feature is disabled'], 403);
+        }
+
+        $files = FileManager::listFiles(array_merge($request->all(), ['favorites_only' => true]));
+        return response()->json($files);
+    }
 }
