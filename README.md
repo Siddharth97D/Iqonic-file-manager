@@ -184,9 +184,34 @@ Navigate faster with built-in hotkeys:
 - **`Ctrl/Cmd + A`**: Select All Files
 - **`Delete` / `Backspace`**: Delete Selected Files
 - **`Esc`**: Clear Selection / Close Modals
-```
 
 ---
+
+## ⚙️### Secure File Sharing
+Share files with external users securely:
+- **Public Links**: Generate unique, shareable URLs.
+- **Password Protection**: Optional password requirement.
+- **Expiration**: Set expiry dates for links.
+- **Download Limits**: Restrict max number of downloads.
+
+```php
+// Generate programmatically
+$share = $fileManager->createShareLink($file, [
+    'password' => 'secret123',
+    'expires_at' => now()->addDays(7),
+    'max_downloads' => 5
+]);
+
+echo route('share.show', $share->token);
+```
+
+### Context Menu
+Right-click on any file or folder to access quick actions:
+- **Preview**: Open file preview.
+- **Share**: Open sharing modal.
+- **Rename**: Quick rename.
+- **Download**: Direct download.
+- **Delete**: Move to trash.
 
 ## ⚙️ Configuration
 

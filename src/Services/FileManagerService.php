@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Storage;
 use Iqonic\FileManager\Jobs\SyncFileToS3;
 use Iqonic\FileManager\Jobs\DeleteFileFromS3;
 use Iqonic\FileManager\Models\Setting;
+use Iqonic\FileManager\Models\FileShare;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class FileManagerService
 {
@@ -597,6 +600,29 @@ class FileManagerService
                 $this->dispatchS3Sync($child);
             }
         }
+    }
+    /**
+     * Create a share link for a file.
+     *
+     * @param File $file
+     * @param array $options
+     * @return FileShare
+     */
+    public function createShareLink(File $file, array $options = []): FileShare
+    {
+        $token = Str::random(32);
+        while (FileShare::where('token', $token)->exists()) {
+            $token = Str::random(32);
+        }
+
+        return FileShare::create([
+            'file_id' => $file->id,
+            'user_id' => Auth::id() ?? $file->user_id, // Fallback to file owner if not auth
+            'token' => $token,
+            'password_hash' => isset($options['password']) && !empty($options['password']) ? Hash::make($options['password']) : null,
+            'expires_at' => isset($options['expires_at']) ? $options['expires_at'] : null,
+            'max_downloads' => isset($options['max_downloads']) ? $options['max_downloads'] : null,
+        ]);
     }
 }
 

@@ -176,6 +176,7 @@
                         :class="{'ring-2 theme-ring-primary shadow-lg bg-indigo-50/50': selectedFiles.some(f => f.id === {{ $file->id }})}"
                         @click="handleFileClick(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
                         @dblclick="{{ $file->type === 'folder' ? "window.location.href = '" . route('file-manager.dashboard', array_merge(request()->query(), ['folder_id' => $file->id])) . "'" : "openPreview(allFiles.find(f => f.id == " . $file->id . "), allFiles)" }}"
+                        @contextmenu.prevent="$dispatch('fm:context-menu', { event: $event, file: allFiles.find(f => f.id == {{ $file->id }}) })"
                     >
                         
                         <!-- Selection Checkbox (Visible on Hover or Selected) -->
@@ -295,6 +296,7 @@
                 :class="{'ring-2 theme-ring-primary shadow-lg bg-indigo-50/50': selectedFiles.some(f => f.id === file.id)}"
                 @click="selectFile(file)"
                 @dblclick="file.type === 'folder' ? window.location.href = '{{ route('file-manager.dashboard') }}?folder_id=' + file.id : openPreview(file, searchResults)"
+                @contextmenu.prevent="$dispatch('fm:context-menu', { event: $event, file: file })"
             >
                 
                 <!-- Selection Checkbox -->
@@ -409,6 +411,7 @@
                             @click="handleFileClick(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
                             @dblclick="openPreview(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
                         @endif
+                        @contextmenu.prevent="$dispatch('fm:context-menu', { event: $event, file: allFiles.find(f => f.id == {{ $file->id }}) })"
                     >
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
@@ -490,6 +493,7 @@
                     <tr class="hover:bg-gray-50 cursor-pointer" 
                         :class="{'bg-blue-50': pickerMode && pickerMultiple && selectedFiles.some(f => f.id === file.id)}"
                         @click="if(file.type === 'folder') { window.location.href = '{{ route('file-manager.dashboard') }}?folder_id=' + file.id } else { pickerMode ? selectFile(file) : openPreview(file, searchResults) }"
+                        @contextmenu.prevent="$dispatch('fm:context-menu', { event: $event, file: file })"
                     >
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">

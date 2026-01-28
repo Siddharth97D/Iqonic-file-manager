@@ -3,46 +3,108 @@
 namespace Iqonic\FileManager\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
-use Iqonic\FileManager\Facades\FileManager;
 use Iqonic\FileManager\Models\File;
 use Iqonic\FileManager\Models\FileShare;
+use Iqonic\FileManager\Services\FileManagerService;
+use Illuminate\Support\Facades\Storage;
 
 class ShareController extends Controller
 {
-    public function store(Request $request, File $file)
+    protected $fileManagerService;
+
+    public function __construct(FileManagerService $fileManagerService)
     {
-        $this->authorize('share', $file);
-
-        $share = FileManager::createShare($file, $request->all());
-
-        return response()->json($share);
+        $this->fileManagerService = $fileManagerService;
     }
 
+    /**
+     * Create a share link (API Endpoint).
+     */
+    public function store(Request $request, $id)
+    {
+        $file = File::findOrFail($id);
+        $this->authorize('view', $file);
+
+        $request->validate([
+            'password' => 'nullable|string|min:4',
+            'expires_at' => 'nullable|date|after:now',
+            'max_downloads' => 'nullable|integer|min:1',
+        ]);
+
+        $share = $this->fileManagerService->createShareLink($file, $request->only(['password', 'expires_at', 'max_downloads']));
+
+        return response()->json([
+            'message' => 'Share link created successfully',
+            'url' => route('file-manager.share.show', ['token' => $share->token]),
+            'share' => $share
+        ]);
+    }
+
+    /**
+     * Show the public download page (Web Route).
+     */
     public function show($token)
+    {
+        $share = FileShare::with('file')->where('token', $token)->firstOrFail();
+
+        if (!$share->isValid()) {
+            abort(404, 'Link expired or invalid.');
+        }
+
+        // If password protected, show password form
+        if ($share->password_hash) {
+            return view('file-manager::share.password', compact('share'));
+        }
+
+        // If direct access (or after password), show download/preview page
+        return view('file-manager::share.download', compact('share'));
+    }
+
+    /**
+     * Validate password and show content (Web Route POST).
+     */
+    public function unlock(Request $request, $token)
     {
         $share = FileShare::where('token', $token)->firstOrFail();
 
-        if ($share->expires_at && $share->expires_at->isPast()) {
-            abort(404, 'Link expired');
+        if (!$share->isValid()) {
+             return back()->with('error', 'Link expired.');
         }
 
-        if ($share->max_downloads && $share->downloads_count >= $share->max_downloads) {
-            abort(404, 'Limit reached');
+        if (!$share->checkPassword($request->password)) {
+            return back()->with('error', 'Invalid password.');
         }
 
-        // Logic for password check if needed
-        // ...
+        // Flash success to session so view can show content
+        session()->flash('share_unlocked_' . $token, true);
 
-        $share->increment('downloads_count');
+        return view('file-manager::share.download', compact('share'));
+    }
 
-        if ($share->file->s3_sync_status === 'synced') {
-            $url = app(\Iqonic\FileManager\Services\S3SyncService::class)->getPresignedUrl($share->file);
-            if ($url) return redirect()->away($url);
+    /**
+     * Download the file.
+     */
+    public function download(Request $request, $token)
+    {
+        $share = FileShare::with('file')->where('token', $token)->firstOrFail();
+
+        if (!$share->isValid()) {
+            abort(403, 'Link expired.');
         }
 
-        return response()->download(
-            \Storage::disk($share->file->disk)->path($share->file->path)
-        );
+        // Check password if set (unless unlocked in session)
+        if ($share->password_hash && !session('share_unlocked_' . $token)) {
+             // For direct download links, if password exists, we can't easily prompt.
+             // We assume they came from the show page which handled unlocking.
+             abort(403, 'Password required.');
+        }
+
+        // Increment download count
+        $share->increment('downloads');
+
+        $path = $share->file->path;
+        $disk = config('file-manager.disk');
+
+        return Storage::disk($disk)->download($path, $share->file->filename);
     }
 }

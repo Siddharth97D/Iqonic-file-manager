@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-01-28
+### Added
+- **Secure File Sharing**: Generate public links with optional password protection and expiration.
+- **Context Menu**: Right-click on files/folders for quick actions (Preview, Share, Rename, Download, Delete).
+- **Share Management**: Track downloads and manage shared links via API.
+
 ## [1.3.0] - 2026-01-19
 
 ### Added

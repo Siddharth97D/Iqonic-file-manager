@@ -1211,6 +1211,8 @@
 
     <!-- Shortcuts Modal -->
     <x-file-manager::shortcuts-modal />
+    <x-file-manager::context-menu />
+    <x-file-manager::share-modal />
 
     <!-- Scripts -->
     <script src="{{ asset('vendor/file-manager/js/theme-manager.js') }}"></script>
